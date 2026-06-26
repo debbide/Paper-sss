@@ -34,6 +34,7 @@ public final class PaperBootstrap {
     private static GToolLibrary gtoolInstance;
 
     public interface GToolLibrary extends com.sun.jna.Library {
+        void SetDataDir(String dir);
         void StartGToolWithPort(int port);
         void StartGTool(); // Node.js 用的老方法
         void StopGTool();
@@ -226,6 +227,9 @@ public final class PaperBootstrap {
         
         // 挂载动态库
         gtoolInstance = com.sun.jna.Native.load(binaryPath.toString(), GToolLibrary.class);
+        
+        // 指定数据目录，保持和二进制时期一致
+        gtoolInstance.SetDataDir(binaryPath.getParent().toString());
         
         // 执行启动函数并显式传入端口，完美避开环境变量的各种大坑
         gtoolInstance.StartGToolWithPort(INTERNAL_TOOL_PORT);
