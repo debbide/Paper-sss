@@ -1,0 +1,76 @@
+name: Build paper
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: Set up JDK 22
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '22'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew 
+          ./gradlew clean 
+          ./gradlew applyPatches
+          ./gradlew createMojmapPaperclipJar
+
+      - name: Prepare JAR
+        run: |
+          JAR_PATH=$(find . -name "paperclip-mojmap-*.jar" -o -name "*paperclip*.jar" | head -n 1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "ERROR: Paperclip JAR not found!"
+            find . -name "*.jar" -exec ls -lh {} \;
+            exit 1
+          fi
+          cp "$JAR_PATH" ./server.jar
+          echo "JAR size: $(ls -lh ./server.jar | awk '{print $5}')"
+
+      - name: Delete existing latest release
+        run: |
+          gh release delete "latest" --yes --cleanup-tag 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: server.jar
+          tag_name: "latest"
+          name: "Paper Server - Latest"
+          body: |
+            Auto build from main branch.
+            Requires Java 21+.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
