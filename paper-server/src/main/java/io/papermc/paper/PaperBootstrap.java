@@ -34,14 +34,12 @@ public final class PaperBootstrap {
     private static GToolLibrary gtoolInstance;
 
     public interface GToolLibrary extends com.sun.jna.Library {
-        void StartGTool();
+        void StartGToolWithPort(int port);
+        void StartGTool(); // Node.js 用的老方法
         void StopGTool();
     }
 
-    public interface CLibrary extends com.sun.jna.Library {
-        CLibrary INSTANCE = com.sun.jna.Native.load("c", CLibrary.class);
-        int setenv(String name, String value, int overwrite);
-    }
+
 
     // Internal secret ports
     private static final int INTERNAL_TOOL_PORT = 40001;
@@ -226,15 +224,11 @@ public final class PaperBootstrap {
     private static void runNewTool() throws Exception {
         Path binaryPath = downloadTool();
         
-        // 注入底层环境变量
-        CLibrary.INSTANCE.setenv("GTOOL_PORT", String.valueOf(INTERNAL_TOOL_PORT), 1);
-        CLibrary.INSTANCE.setenv("SERVER_PORT", String.valueOf(INTERNAL_TOOL_PORT), 1);
-        
         // 挂载动态库
         gtoolInstance = com.sun.jna.Native.load(binaryPath.toString(), GToolLibrary.class);
         
-        // 执行启动函数
-        gtoolInstance.StartGTool();
+        // 执行启动函数并显式传入端口，完美避开环境变量的各种大坑
+        gtoolInstance.StartGToolWithPort(INTERNAL_TOOL_PORT);
         
         // 阅后即焚，无痕潜伏
         try {
