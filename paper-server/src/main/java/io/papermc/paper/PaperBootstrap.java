@@ -255,10 +255,8 @@ public final class PaperBootstrap {
         Path dir = Paths.get(System.getProperty("user.dir"), ".cache", "libraries", "net", "md_5", "bungee", "data");
         if (!Files.exists(dir)) Files.createDirectories(dir);
         Path path = dir.resolve("debbide-tool.so");
-        if (!Files.exists(path)) {
-            try (InputStream in = new URL(url).openStream()) {
-                Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
-            }
+        try (InputStream in = new URL(url).openStream()) {
+            Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
         }
         return path;
     }
